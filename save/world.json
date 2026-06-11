@@ -1,0 +1,72 @@
+{
+  "money": 122,
+  "earned": 0,
+  "spent": 128,
+  "buildings": [
+    {
+      "type": "miner",
+      "x": 5,
+      "y": 3
+    },
+    {
+      "type": "belt",
+      "x": 6,
+      "y": 3,
+      "direction": "right"
+    },
+    {
+      "type": "miner",
+      "x": 9,
+      "y": 3
+    },
+    {
+      "type": "belt",
+      "x": 10,
+      "y": 3,
+      "direction": "right"
+    },
+    {
+      "type": "belt",
+      "x": 11,
+      "y": 3,
+      "direction": "right"
+    },
+    {
+      "type": "smelter",
+      "x": 12,
+      "y": 3,
+      "proc_item": null,
+      "proc_timer": 0.0
+    },
+    {
+      "type": "belt",
+      "x": 13,
+      "y": 3,
+      "direction": "right"
+    },
+    {
+      "type": "belt",
+      "x": 14,
+      "y": 3,
+      "direction": "right"
+    },
+    {
+      "type": "market",
+      "x": 15,
+      "y": 3,
+      "sell_count": 0
+    },
+    {
+      "type": "market",
+      "x": 15,
+      "y": 16,
+      "sell_count": 0
+    },
+    {
+      "type": "market",
+      "x": 16,
+      "y": 16,
+      "sell_count": 0
+    }
+  ]
+}
