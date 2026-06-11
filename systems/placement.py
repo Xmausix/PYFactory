@@ -1,56 +1,56 @@
 from constants import B_COSTS, BELT_DIRS, ASSEMBLER_RECIPES
-from entities import (Miner, Belt, Smelter, Inserter,
-                      Storage, Market, Assembler, Generator,
-                      Splitter, Merger, ENTITY_MAP)
+from entities import ENTITY_MAP
 
 
 class PlacementSystem:
     def __init__(self, gmap, econ):
-        self.gmap = gmap
-        self.econ = econ
-        self.belt_dir = "right"
+        self.gmap         = gmap
+        self.econ         = econ
+        self.belt_dir     = "right"
         self.inserter_dir = "right"
-        self.assembler_recipe = "iron_gears"
         self.splitter_dir = "right"
-        self.merger_dir = "right"
+        self.merger_dir   = "right"
+        self.rail_dir     = "right"
+        self.ugb_mode     = "input"
+        self.recipe       = "iron_gears"
 
     def place(self, x: int, y: int, bt: str | None) -> bool:
-        if not bt:
-            return False
-        if self.gmap.get_building(x, y):
+        if not bt or self.gmap.get_building(x, y):
             return False
         if not (0 <= x < self.gmap.width and 0 <= y < self.gmap.height):
             return False
-
-        cost = B_COSTS.get(bt, 999)
         tile = self.gmap.get_tile(x, y)
-
+        if not tile.is_buildable():
+            return False
         if bt == "miner" and not tile.is_resource():
             return False
-        if tile.tile_type == "water":
-            return False
+        cost = B_COSTS.get(bt, 999)
         if not self.econ.spend(cost):
             return False
-
         cls = ENTITY_MAP.get(bt)
         if not cls:
             self.econ.earn(cost)
             return False
-
         b = cls(x, y)
-        if bt == "belt":
-            b.direction = self.belt_dir
-        elif bt == "inserter":
-            b.direction = self.inserter_dir
-        elif bt == "assembler":
-            b.recipe = self.assembler_recipe
-        elif bt == "splitter":
-            b.direction = self.splitter_dir
-        elif bt == "merger":
-            b.direction = self.merger_dir
-
+        self._configure(b, bt)
         self.gmap.add_building(b)
+        from systems.fog_of_war import FogOfWar
+        self.gmap.reveal_area(x, y, 5)
         return True
+
+    def _configure(self, b, bt):
+        dirs_map = {
+            "belt": "belt_dir", "underground_belt": "belt_dir",
+            "inserter": "inserter_dir", "splitter": "splitter_dir",
+            "priority_splitter": "splitter_dir", "merger": "merger_dir",
+            "rail": "rail_dir",
+        }
+        if bt in dirs_map and hasattr(b, "direction"):
+            b.direction = getattr(self, dirs_map[bt])
+        if bt == "underground_belt":
+            b.mode = self.ugb_mode
+        if bt == "assembler":
+            b.recipe = self.recipe
 
     def remove(self, x: int, y: int) -> bool:
         b = self.gmap.remove_building(x, y)
@@ -59,41 +59,38 @@ class PlacementSystem:
             return True
         return False
 
-    def rotate_belt(self, s: int = 1) -> None:
-        i = BELT_DIRS.index(self.belt_dir)
-        self.belt_dir = BELT_DIRS[(i + s) % 4]
+    def sell(self, x: int, y: int) -> bool:
+        b = self.gmap.remove_building(x, y)
+        if b:
+            self.econ.earn(B_COSTS.get(b.btype, 0))
+            return True
+        return False
 
-    def rotate_inserter(self, s: int = 1) -> None:
-        i = BELT_DIRS.index(self.inserter_dir)
-        self.inserter_dir = BELT_DIRS[(i + s) % 4]
+    def _rot(self, attr, step):
+        cur = getattr(self, attr)
+        i   = BELT_DIRS.index(cur)
+        setattr(self, attr, BELT_DIRS[(i + step) % 4])
 
-    def rotate_splitter(self, s: int = 1) -> None:
-        i = BELT_DIRS.index(self.splitter_dir)
-        self.splitter_dir = BELT_DIRS[(i + s) % 4]
+    def rotate_belt(self, s=1):     self._rot("belt_dir", s)
+    def rotate_inserter(self, s=1): self._rot("inserter_dir", s)
+    def rotate_splitter(self, s=1): self._rot("splitter_dir", s)
+    def rotate_merger(self, s=1):   self._rot("merger_dir", s)
+    def rotate_rail(self, s=1):     self._rot("rail_dir", s)
+    def toggle_ugb_mode(self):      self.ugb_mode = "output" if self.ugb_mode == "input" else "input"
 
-    def rotate_merger(self, s: int = 1) -> None:
-        i = BELT_DIRS.index(self.merger_dir)
-        self.merger_dir = BELT_DIRS[(i + s) % 4]
-
-    def cycle_recipe(self, s: int = 1) -> None:
+    def cycle_recipe(self, s=1):
         recipes = list(ASSEMBLER_RECIPES.keys())
-        i = recipes.index(self.assembler_recipe)
-        self.assembler_recipe = recipes[(i + s) % len(recipes)]
+        i = recipes.index(self.recipe)
+        self.recipe = recipes[(i + s) % len(recipes)]
 
     def auto_build(self, x: int, y: int) -> None:
-        """Shift+click: auto-build miner->belt->smelter->belt->market."""
         tile = self.gmap.get_tile(x, y)
         if not tile.is_resource():
             return
         self.place(x, y, "miner")
-        old_dir = self.belt_dir
+        old = self.belt_dir
         self.belt_dir = "right"
-        chain = [
-            (x + 1, y, "belt"), (x + 2, y, "belt"),
-            (x + 3, y, "smelter"),
-            (x + 4, y, "belt"), (x + 5, y, "belt"),
-            (x + 6, y, "market"),
-        ]
-        for cx, cy, ct in chain:
+        for cx, cy, ct in [(x+1,y,"belt"),(x+2,y,"belt"),(x+3,y,"furnace"),
+                            (x+4,y,"belt"),(x+5,y,"belt"),(x+6,y,"market")]:
             self.place(cx, cy, ct)
-        self.belt_dir = old_dir
+        self.belt_dir = old

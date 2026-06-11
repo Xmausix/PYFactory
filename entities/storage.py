@@ -2,16 +2,15 @@ from collections import Counter
 
 
 class Storage:
-    """Stores up to 500 items by type."""
-    btype = "storage"
+    btype    = "storage"
     CAPACITY = 500
 
     def __init__(self, x: int, y: int):
-        self.x = x
-        self.y = y
+        self.x       = x
+        self.y       = y
         self.items: list[str] = []
         self.filter: str | None = None
-        self.status = "idle"
+        self.status  = "idle"
 
     def accept_item(self, item: str, _from=None) -> bool:
         if self.filter and self.filter != item:
@@ -24,7 +23,6 @@ class Storage:
         return False
 
     def take_item(self, item_type: str | None = None) -> str | None:
-        """Remove and return an item (optionally of specific type)."""
         if not self.items:
             return None
         if item_type is None:
@@ -44,9 +42,6 @@ class Storage:
 
     def serialize(self) -> dict:
         return {
-            "type": "storage",
-            "x": self.x,
-            "y": self.y,
-            "items": self.items,
-            "filter": self.filter,
+            "type": "storage", "x": self.x, "y": self.y,
+            "items": self.items, "filter": self.filter,
         }

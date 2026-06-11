@@ -1,99 +1,120 @@
 import pygame
-import sys
 import random
-from constants import C_BG, C_TXT
 
 
 class MainMenu:
-    """Main menu with New Game / Load / Quit options."""
+    OPTIONS = ["New Game", "Load Game", "Settings", "Quit"]
 
-    OPTIONS = ["New Game", "Load Game", "Quit"]
-
-    def __init__(self, screen_w: int, screen_h: int):
+    def __init__(self, screen_w, screen_h):
         self.screen_w = screen_w
         self.screen_h = screen_h
-        self.font  = pygame.font.SysFont("consolas,monospace", 36, bold=True)
-        self.fontM = pygame.font.SysFont("consolas,monospace", 22, bold=True)
-        self.fontS = pygame.font.SysFont("consolas,monospace", 14)
         self.selected = 0
+        self.font     = pygame.font.SysFont("consolas,monospace", 38, bold=True)
+        self.fontM    = pygame.font.SysFont("consolas,monospace", 24, bold=True)
+        self.fontS    = pygame.font.SysFont("consolas,monospace", 13)
         self.particles: list[dict] = []
-        self._spawn_timer = 0.0
+        self._ptimer  = 0.0
 
-    def _spawn_particle(self) -> None:
-        self.particles.append({
-            "x": random.randint(0, self.screen_w),
-            "y": self.screen_h + 5,
-            "vy": -random.uniform(0.5, 2.0),
-            "vx": random.uniform(-0.3, 0.3),
-            "t": random.uniform(3.0, 6.0),
-            "size": random.randint(2, 5),
-            "color": random.choice([
-                (255, 180, 60), (80, 180, 255),
-                (100, 255, 140), (255, 100, 80)
-            ]),
-        })
-
-    def update(self, dt: float) -> None:
-        self._spawn_timer += dt
-        if self._spawn_timer > 0.05:
-            self._spawn_timer = 0.0
-            self._spawn_particle()
+    def update(self, dt):
+        self._ptimer += dt
+        if self._ptimer > 0.04:
+            self._ptimer = 0.0
+            self.particles.append({
+                "x": random.randint(0, self.screen_w),
+                "y": self.screen_h + 5,
+                "vx": random.uniform(-0.2, 0.2),
+                "vy": -random.uniform(0.4, 2.0),
+                "t": random.uniform(3.0, 7.0),
+                "size": random.randint(2, 5),
+                "c": random.choice([
+                    (255, 180, 60), (80, 180, 255),
+                    (100, 255, 140), (255, 100, 80)]),
+            })
         for p in self.particles:
             p["x"] += p["vx"]
             p["y"] += p["vy"]
             p["t"] -= dt
         self.particles = [p for p in self.particles if p["t"] > 0 and p["y"] > -10]
 
-    def draw(self, screen: pygame.Surface) -> None:
-        screen.fill((15, 15, 25))
+    def _btn_rect(self, index: int) -> pygame.Rect:
+        btn_w = 320
+        btn_h = 52
+        gap   = 12
+        total_h = len(self.OPTIONS) * btn_h + (len(self.OPTIONS) - 1) * gap
+        start_y = self.screen_h // 2 - total_h // 2 + 40
+        x = self.screen_w // 2 - btn_w // 2
+        y = start_y + index * (btn_h + gap)
+        return pygame.Rect(x, y, btn_w, btn_h)
+
+    def draw(self, screen):
+        screen.fill((12, 12, 22))
 
         # Particles
         for p in self.particles:
-            alpha = int(min(255, p["t"] * 50))
+            alpha = int(min(255, p["t"] * 45))
             s = pygame.Surface((p["size"], p["size"]), pygame.SRCALPHA)
-            s.fill((*p["color"], alpha))
+            s.fill((*p["c"], alpha))
             screen.blit(s, (int(p["x"]), int(p["y"])))
 
         # Title
-        title = self.font.render("FACTORY AUTOMATION", True, (255, 200, 60))
-        screen.blit(title, title.get_rect(center=(self.screen_w // 2, self.screen_h // 3)))
-        sub = self.fontS.render("Build your automated factory empire", True, (160, 160, 200))
-        screen.blit(sub, sub.get_rect(center=(self.screen_w // 2, self.screen_h // 3 + 44)))
+        title = self.font.render("FACTORY AUTOMATION", True, (255, 205, 60))
+        screen.blit(title, title.get_rect(
+            center=(self.screen_w // 2, self.screen_h // 4)))
+        sub = self.fontS.render(
+            "Build. Automate. Launch the Rocket.", True, (150, 155, 195))
+        screen.blit(sub, sub.get_rect(
+            center=(self.screen_w // 2, self.screen_h // 4 + 44)))
 
-        # Options
-        cy = self.screen_h // 2
+        # Buttons
+        mx, my = pygame.mouse.get_pos()
         for i, opt in enumerate(self.OPTIONS):
-            selected = i == self.selected
-            color = (255, 220, 60) if selected else (180, 180, 200)
-            prefix = "▶ " if selected else "  "
-            t = self.fontM.render(f"{prefix}{opt}", True, color)
-            r = t.get_rect(center=(self.screen_w // 2, cy))
-            if selected:
-                pygame.draw.rect(screen, (40, 40, 70),
-                                 r.inflate(30, 8))
-            screen.blit(t, r)
-            cy += 50
+            rect    = self._btn_rect(i)
+            hovered = rect.collidepoint(mx, my)
+            sel     = i == self.selected or hovered
 
-        # Controls hint
-        hint = self.fontS.render("W/S or ↑↓ to navigate  •  Enter to select  •  F11 fullscreen",
-                                 True, (100, 100, 120))
-        screen.blit(hint, hint.get_rect(center=(self.screen_w // 2, self.screen_h - 30)))
+            # Background
+            bg = (50, 52, 78) if sel else (32, 34, 52)
+            pygame.draw.rect(screen, bg, rect, border_radius=6)
 
-    def handle_event(self, event: pygame.event.Event) -> str | None:
-        """Returns action string or None."""
+            # Border
+            bc = (255, 225, 60) if sel else (60, 62, 85)
+            pygame.draw.rect(screen, bc, rect, 2, border_radius=6)
+
+            # Text
+            color = (255, 225, 60) if sel else (170, 175, 200)
+            pre   = "▶  " if sel else "   "
+            t     = self.fontM.render(f"{pre}{opt}", True, color)
+            screen.blit(t, t.get_rect(center=rect.center))
+
+        # Hint
+        hint = self.fontS.render(
+            "↑↓ navigate  •  Enter / Click select  •  F11 fullscreen",
+            True, (80, 82, 105))
+        screen.blit(hint, hint.get_rect(
+            center=(self.screen_w // 2, self.screen_h - 28)))
+
+    def handle_event(self, event) -> str | None:
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_UP, pygame.K_w):
                 self.selected = (self.selected - 1) % len(self.OPTIONS)
             elif event.key in (pygame.K_DOWN, pygame.K_s):
                 self.selected = (self.selected + 1) % len(self.OPTIONS)
-            elif event.key == pygame.K_RETURN:
-                return self.OPTIONS[self.selected].lower().replace(" ", "_")
-        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            cy = self.screen_h // 2
-            for i, opt in enumerate(self.OPTIONS):
-                r = pygame.Rect(0, 0, 300, 40)
-                r.center = (self.screen_w // 2, cy)
-                if r.collidepoint(event.pos):
-                    return opt.lower().replace(" ", "_")
-                cy += 50
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                return self._action(self.selected)
+
+        elif event.type == pygame.MOUSEMOTION:
+            for i in range(len(self.OPTIONS)):
+                if self._btn_rect(i).collidepoint(event.pos):
+                    self.selected = i
+                    break
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                for i in range(len(self.OPTIONS)):
+                    if self._btn_rect(i).collidepoint(event.pos):
+                        return self._action(i)
+
         return None
+
+    def _action(self, index: int) -> str:
+        return self.OPTIONS[index].lower().replace(" ", "_")
