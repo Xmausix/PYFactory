@@ -1,4 +1,4 @@
-#  Factory Automation
+#  PYFactory
 
 A 2D factory-building game inspired by Factorio, built entirely in **Python + Pygame**.
 

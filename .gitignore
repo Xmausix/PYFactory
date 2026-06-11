@@ -7,4 +7,7 @@
 /entities/__pycache__
 /__pycache__
 
-save
+save/
+save/keybinds.json
+save/settings.json
+save/world.json
